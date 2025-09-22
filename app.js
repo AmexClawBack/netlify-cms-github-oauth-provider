@@ -1,3 +1,6 @@
+console.log("DEBUG ORIGINS:", process.env.ORIGINS);
+console.log("DEBUG ORIGIN:", process.env.ORIGIN);
+
 require('dotenv').config({ silent: true })
 const express = require('express')
 const middleWarez = require('./index.js')
