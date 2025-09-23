@@ -88,19 +88,54 @@ passport.use(
 // -------------------
 app.get('/auth', passport.authenticate('github', { scope: ['repo'] }));
 
+// IMPORTANT: Return a tiny HTML page that postMessage's the token to the opener (Decap CMS)
 app.get(
   '/callback',
   passport.authenticate('github', { failureRedirect: '/error' }),
   (req, res) => {
-    res.json({
-      token: req.user.accessToken,
-      profile: req.user.profile,
-    });
+    const token = req.user && req.user.accessToken ? req.user.accessToken : '';
+    // HTML that notifies the CMS (in the parent window) about success, then closes the popup.
+    const html = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Auth Success</title></head>
+<body>
+<script>
+  (function () {
+    try {
+      var payload = { token: ${JSON.stringify(token)}, provider: 'github' };
+      // Decap/Netlify CMS listens for this exact postMessage prefix:
+      var msg = 'authorization:github:success:' + JSON.stringify(payload);
+      // Use "*" so CMS receives the message regardless of origin (it validates on its side).
+      if (window.opener && typeof window.opener.postMessage === 'function') {
+        window.opener.postMessage(msg, '*');
+      }
+    } catch (e) { /* ignore */ }
+    window.close();
+  })();
+</script>
+</body></html>`;
+    res.set('Content-Type', 'text/html; charset=utf-8').send(html);
   }
 );
 
+// Send a similar page for errors, so CMS can handle them gracefully
 app.get('/error', (req, res) => {
-  res.status(500).json({ error: 'OAuth login failed' });
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Auth Error</title></head>
+<body>
+<script>
+  (function () {
+    try {
+      var payload = { error: 'OAuth login failed' };
+      var msg = 'authorization:github:error:' + JSON.stringify(payload);
+      if (window.opener && typeof window.opener.postMessage === 'function') {
+        window.opener.postMessage(msg, '*');
+      }
+    } catch (e) { /* ignore */ }
+    window.close();
+  })();
+</script>
+</body></html>`;
+  res.set('Content-Type', 'text/html; charset=utf-8').status(400).send(html);
 });
 
 // -------------------
