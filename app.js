@@ -88,55 +88,54 @@ passport.use(
 // -------------------
 app.get('/auth', passport.authenticate('github', { scope: ['repo'] }));
 
-// IMPORTANT: Return a tiny HTML page that postMessage's the token to the opener (Decap CMS)
 app.get(
   '/callback',
   passport.authenticate('github', { failureRedirect: '/error' }),
   (req, res) => {
-    const token = req.user && req.user.accessToken ? req.user.accessToken : '';
-    // HTML that notifies the CMS (in the parent window) about success, then closes the popup.
+    const token = (req.user && req.user.accessToken) ? req.user.accessToken : '';
+
+    // HTML that posts the token back to Decap CMS in the opener window.
+    // We send both formats (with and without 'provider') to satisfy all Decap versions,
+    // and we post twice with a small delay to avoid timing issues.
     const html = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Auth Success</title></head>
 <body>
 <script>
-  (function () {
+(function () {
+  var token = ${JSON.stringify(token)};
+  function sendMessages(target) {
     try {
-      var payload = { token: ${JSON.stringify(token)}, provider: 'github' };
-      // Decap/Netlify CMS listens for this exact postMessage prefix:
-      var msg = 'authorization:github:success:' + JSON.stringify(payload);
-      // Use "*" so CMS receives the message regardless of origin (it validates on its side).
-      if (window.opener && typeof window.opener.postMessage === 'function') {
-        window.opener.postMessage(msg, '*');
-      }
-    } catch (e) { /* ignore */ }
+      // Format Decap expects in most versions:
+      // "authorization:github:success:" + JSON.stringify({ token: "<token>" })
+      target.postMessage('authorization:github:success:' + JSON.stringify({ token: token }), '*');
+      // Some forks expect a provider field too; send a second message just in case:
+      target.postMessage('authorization:github:success:' + JSON.stringify({ token: token, provider: 'github' }), '*');
+    } catch (e) {}
+  }
+
+  // Send immediately…
+  if (window.opener && typeof window.opener.postMessage === 'function') {
+    sendMessages(window.opener);
+  } else if (window.parent && typeof window.parent.postMessage === 'function') {
+    sendMessages(window.parent);
+  }
+
+  // …and again shortly after to mitigate race conditions
+  setTimeout(function(){
+    if (window.opener && typeof window.opener.postMessage === 'function') {
+      sendMessages(window.opener);
+    } else if (window.parent && typeof window.parent.postMessage === 'function') {
+      sendMessages(window.parent);
+    }
     window.close();
-  })();
+  }, 150);
+})();
 </script>
 </body></html>`;
     res.set('Content-Type', 'text/html; charset=utf-8').send(html);
   }
 );
 
-// Send a similar page for errors, so CMS can handle them gracefully
-app.get('/error', (req, res) => {
-  const html = `<!doctype html>
-<html><head><meta charset="utf-8"><title>Auth Error</title></head>
-<body>
-<script>
-  (function () {
-    try {
-      var payload = { error: 'OAuth login failed' };
-      var msg = 'authorization:github:error:' + JSON.stringify(payload);
-      if (window.opener && typeof window.opener.postMessage === 'function') {
-        window.opener.postMessage(msg, '*');
-      }
-    } catch (e) { /* ignore */ }
-    window.close();
-  })();
-</script>
-</body></html>`;
-  res.set('Content-Type', 'text/html; charset=utf-8').status(400).send(html);
-});
 
 // -------------------
 // Listen on Render port
