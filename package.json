@@ -1,39 +1,29 @@
-{"dependencies": {
-  "express": "^4.18.2",
-  "express-session": "^1.17.3",
-  "passport": "^0.7.0",
-  "passport-github2": "^0.1.12",
-  "cors": "^2.8.5",
-  "body-parser": "^1.20.2"
-}
-
+{
   "name": "netlify-cms-github-oauth-provider",
   "version": "1.1.0",
-  "engines": {
-    "node": ">=7.x"
-  },
-  "description": "netlify oauth github client sending token in form as netlify service itself",
-  "repository": "https://github.com/vencax/netlify-cms-github-oauth-provider",
-  "main": "index.js",
+  "description": "OAuth proxy for Decap/Netlify CMS with GitHub backend",
+  "main": "app.js",
   "scripts": {
-    
-    "test": "echo \"Error: no test specified\" && exit 1",
-   
-
     "start": "node app.js",
-    "startdbg": "node --inspect-brk app.js"
+    "startdbg": "node --inspect-brk app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "netlify",
-    "cms",
-    "auth"
-  ],
-  "author": "Vaclav Klecanda <vencax77@gmail.com>",
-  "license": "MIT",
   "dependencies": {
-    "dotenv": "^16",
-    "express": "^4.15.2",
-    "randomstring": "^1.2",
-    "simple-oauth2": "^5"
-  }
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12"
+  },
+  "engines": {
+    "node": ">=16.x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmexClawBack/netlify-cms-github-oauth-provider.git"
+  },
+  "author": "DecapCMS / NetlifyCMS Community",
+  "license": "MIT"
 }
